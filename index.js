@@ -2,6 +2,7 @@ const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const User = require("./models/users");
+const Team = require("./models/teams");
 const port = 5000;
 
 const app = express();
@@ -10,6 +11,7 @@ app.use(
   cors({
     credentials: true,
     origin: "https://heliverse-frontend-v2.onrender.com",
+    // origin: "*",
   })
 );
 
@@ -121,7 +123,6 @@ app.get("/filter-users", async (req, res) => {
   }
 
   try {
-    // Use the find method of your Mongoose model to filter users
     const filteredUsers = await User.find(filter);
     res.json(filteredUsers);
   } catch (error) {
@@ -138,11 +139,65 @@ app.get("/api/search-user", async (req, res) => {
   }
 
   try {
-    // Use the find method of your Mongoose model to filter users
     const filteredUsers = await User.find({
       first_name: { $regex: `^${name}`, $options: "i" },
     });
     res.json(filteredUsers);
+  } catch (error) {
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+// create team
+app.post("/api/team", async (req, res) => {
+  const { team, teamName } = req.body;
+
+  try {
+    if (!teamName) {
+      return res.status(400).json({ error: "Team name is required." });
+    }
+
+    if (!team || !Array.isArray(team) || team.length === 0) {
+      return res
+        .status(400)
+        .json({ error: "Users array is required and should not be empty." });
+    }
+
+    const uniqueDomains = [...new Set(team.map((t) => t.domain))];
+
+    const Availability = team.every((element) => element.available === true);
+
+    if (uniqueDomains.length !== team.length || !Availability) {
+      return res.status(400).json({
+        error: "Selected users must have unique domains and availability.",
+      });
+    }
+
+    const newTeam = new Team({
+      team_name: teamName,
+      selected_user: team,
+    });
+
+    await newTeam.save();
+
+    res.status(201).json(newTeam);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+app.get("/api/team/:id", async (req, res) => {
+  const teamId = req.params.id;
+
+  try {
+    const team = await Team.findById(teamId);
+
+    if (!team) {
+      return res.status(404).json({ error: "Team not found" });
+    }
+
+    res.json(team);
   } catch (error) {
     res.status(500).json({ error: "Internal Server Error" });
   }

@@ -106,6 +106,25 @@ app.delete("/api/users/:id", async (req, res) => {
   }
 });
 
+app.put("/api/users/:id", async (req, res) => {
+  const userId = req.params.id;
+
+  try {
+    const updatedUser = await User.findByIdAndUpdate(userId, req.body, {
+      new: true,
+    }).exec();
+
+    if (!updatedUser) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    res.json(updatedUser);
+  } catch (error) {
+    console.error("Error updating user in MongoDB:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
 app.get("/filter-users", async (req, res) => {
   const { domain, gender, available } = req.query;
   let filter = {};
